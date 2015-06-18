@@ -1,9 +1,9 @@
 package com.google.playmoviespartner.api.demo;
 
+import com.google.api.client.util.Objects;
+
 import java.util.Collections;
 import java.util.List;
-
-import com.google.api.client.util.Objects;
 
 public final class ListOrdersResponse {
 

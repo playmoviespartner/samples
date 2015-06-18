@@ -1,12 +1,5 @@
 package com.google.playmoviespartner.api.demo;
 
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.List;
-
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpHeaders;
@@ -17,6 +10,13 @@ import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.gson.Gson;
+
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.List;
 
 public final class ApiDemo {
 
@@ -53,7 +53,6 @@ public final class ApiDemo {
           @Override
           public void initialize(HttpRequest request) {
             HttpHeaders headers = new HttpHeaders();
-            headers.set("X-GFE-SSL", true);
             headers.setAuthorization("Bearer " + accessToken);
             request.setHeaders(headers);
           }
@@ -82,8 +81,12 @@ public final class ApiDemo {
     String nextPageToken = null;
     int callNumber = 0;
     int total = 0;
+    IOException exception;
+    boolean lastTry = false;
     do {
+      exception = null;
       callNumber++;
+      lastTry = callNumber == maxCalls;
       try {
         ListOrdersResponse ordersResponse =
             listUnfulFilledOrders(credential, accountId, batchSize, nextPageToken);
@@ -99,10 +102,29 @@ public final class ApiDemo {
               order.getPphName());
         }
       } catch (IOException e) {
-        System.out.printf("Call %d failed (%s), will retry,\n", callNumber,
+        exception = e;
+        System.out.printf("Call %d failed, will retry. Error:\n%s", callNumber,
             e.getMessage());
+        if (!lastTry) {
+          sleep();
+        }
       }
-    } while (nextPageToken != null && callNumber < maxCalls);
+    } while ((nextPageToken != null || exception != null) && !lastTry);
+  }
+
+  /**
+   * Sleeps current thread.
+   *
+   *  <p>Ideally it should use exponential backoff, but it's not to simplify.
+   */
+  private static void sleep() {
+    int duration = 3000;
+    try {
+      System.out.printf("Sleeping for %d ms.", duration);
+      Thread.sleep(duration);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
   }
 
   private ApiDemo() {
